@@ -1,9 +1,9 @@
-import sqlite3
 from PIL import Image
 from collections import defaultdict
+from os.path import exists
 import random
 
-db = sqlite3.connect('cache.db')
+
 #sum and count height width of input
 sumw,sumh = 0,0
 #input count
@@ -37,16 +37,50 @@ def posToRGB(img,arr):
         tmp.append(val)
     return tmp
 
+
+def getFromCache(cachePath,rgb):
+    cache = open(cachePath,'r')
+    curVal = None
+    adj = None
+    index = 0
+    for line in cache:
+        if (line.__contains__(str(rgb))):
+            curVal = line
+            break
+        index += 1
+    cache.close()
+    if (curVal != None):
+        curVal = curVal[:-1]
+        adj = curVal.split(':')[1].split('_')
+    else:
+        adj = []
+    return [index,adj]
+
+def addToCache(cachePath,rgb,adj):
+    cache = open(cachePath,'a')
+    cur = getFromCache(cachePath,rgb)
+    print(cur[1])
+    # if (not str(cur[1]).__contains__(str(adj))):
+        # data=str(cur[1])[1:-1] + str(adj)
+    data= cur[1].append(str(adj) + '_')
+    cache.write(f'{rgb}:{data}\n')
+
 def genGrabBag(img):
     print('genGB')
     px = img.load()
     grabBag = defaultdict(lambda: [])
+    cachePath = 'pixels.txt'
+    if not exists(cachePath):
+        f = open(cachePath,'w')
+        f.write('')
+        f.close()
     for h in range(img.height):
         for w in range(img.width):
             sur = surround(w,h,acc,img.width,img.height)
             sur = posToRGB(img,sur)
             for rgb in sur:
-                grabBag[rgb].append(px[w,h])
+                addToCache(cachePath,rgb,px[w,h])
+                #grabBag[rgb].append(px[w,h])
     return grabBag
 
 def copyFrame(img1,img2):
@@ -81,13 +115,13 @@ def dream(out,grabBag):
     return out
 
 def main():
-    img = getImage('input/mtg.jpg')
+    img = getImage('input/yourimage.png')
     gb = genGrabBag(img)
     avgw,avgh = int(sumw/ic),int(sumh/ic)
 
     output = Image.new(img.mode, (avgw,avgh))
     output = copyFrame(img,output)
-    output = dream(output,gb)
+    #output = dream(output,gb)
     output.save('output/yourimage.png')
 
 if __name__ == '__main__':
